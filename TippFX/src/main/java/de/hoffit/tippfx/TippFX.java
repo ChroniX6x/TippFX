@@ -1,41 +1,41 @@
 package de.hoffit.tippfx;
 
-import javax.inject.Inject;
-
 import javafx.application.Application;
-import javafx.scene.Scene;
-import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
+
+import javax.enterprise.inject.Instance;
+import javax.enterprise.util.AnnotationLiteral;
+import javax.inject.Inject;
 
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TippFX extends Application {
 
 	@Inject
-	Logger l;
-	
+	Instance<Logger> l;
+
 	@Override
 	public void start(Stage primaryStage) {
 
-		Weld weld = new Weld();
+		// Let's initialize CDI/Weld.
+		WeldContainer weldContainer = new Weld().initialize();
 
-		WeldContainer container = weld.initialize();
+		// Make the application parameters injectable with a standard CDI
+		// annotation
+		ApplicationStartupProvider provider = weldContainer.instance()
+				.select(ApplicationStartupProvider.class).get();
+		provider.setParameters(getParameters());
+		provider.setStage(primaryStage);
 
-		container.instance().select(TippFX.class).get();
+		// Now that JavaFX thread is ready
+		// let's inform whoever cares using standard CDI notification mechanism:
+		// CDI events
+		weldContainer.event()
+				.select(Stage.class, new AnnotationLiteral<Startup>() {
+				}).fire(primaryStage);
 
-		weld.shutdown();
-
-//		Logger logger = LoggerFactory.getLogger(TippFX.class);
-		l.debug("BLA");
-
-		primaryStage.setTitle("Test");
-		AnchorPane pane = new AnchorPane();
-		Scene scene = new Scene(pane, 300, 300);
-		primaryStage.setScene(scene);
-		primaryStage.show();
 	}
 
 	public static void main(String[] args) {
